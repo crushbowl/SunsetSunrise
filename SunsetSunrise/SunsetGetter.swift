@@ -60,7 +60,9 @@ class  SunsetGetter {
    // https://www.udacity.com/course/ios-networking-with-swift--ud421
    // https://cocoacasts.com/networking-with-urlsession-meet-the-urlsession-family/
    
-   func nextSunset(dataReturnedFromNet: @escaping (String) -> ()){
+   
+   // Optionals right up until last minute - present something to the user
+   func nextSunset(completionHandler: @escaping (SunsetData?) -> ()){
       //Pull the URL from createURLcomponents
       let pingEndpointURL = createURLcomponents(location: location, date: date)
       let urlRequest = URLRequest(url: pingEndpointURL)
@@ -68,24 +70,23 @@ class  SunsetGetter {
       let config = URLSessionConfiguration.default // Session Configuration
       let session = URLSession(configuration: config) // Load configuration into Session
       
-      DispatchQueue.main.async(execute: { _ in //  launch URL request
-         //this TASK - url session - making a request over the 'net to the URL (go out to the 'net)- retrieve the JSON
-         // When is this coming back? Ans: Later - we don't have to wait for it 'async'
-         let task = session.dataTask(with: urlRequest, completionHandler: { (data, response, error) in
-            // (data, response, error) are the parameters the completion handler receives
-            if error != nil { print(error!.localizedDescription) ; return }
-            do {
-               if let json = try JSONSerialization.jsonObject(with: data!, options: .allowFragments) as? [String: Any] {
-                  let sunsetDictionary = json["results"] as! [String:String]
-                  let sunsetTime = sunsetDictionary["sunset"]
-                  dataReturnedFromNet(sunsetTime!)
-                  print("----------\nHere goes the JSON:\n\(json)\n-----------\n")
-               }
-            } catch { print("error in JSONSerialization") }
-         })
-         task.resume()
-      })
-      
+      //  launch URL request
+      //this TASK - url session - making a request over the 'net to the URL (go out to the 'net)- retrieve the JSON
+      // When is this coming back? Ans: Later - we don't have to wait for it 'async'
+      let task = session.dataTask(with: urlRequest) { (data, response, error) in
+         // (data, response, error) are the parameters the completion handler receives
+         
+         guard let data = data else {
+            fatalError("Something went wrong with data: fix this for production \(error)")
+         }
+         do {
+            let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments)
+            let sunsetData = SunsetData(json: json)
+            
+            completionHandler(sunsetData)
+         } catch { print("error in JSONSerialization") }
+      }
+      task.resume()
    }
    
 }
